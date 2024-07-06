@@ -29,10 +29,13 @@ df = read_excel('questions.xlsx', parse_dates=[
 dates = df['Date']
 question: dict = df['Question']
 
+line_break = '\n'
+messages_before_break = 7
+
 
 def post_question(post_text, post_date, link):
     if link != '':
-        post_text = post_text.replace(link+'\n', '')
+        post_text = post_text.replace(link+line_break, '')
         app.send_photo(chat_id, link, caption=post_text,
                        schedule_date=post_date)
     else:
@@ -83,10 +86,10 @@ def main():
 
         post_question(formatted_text, post_time, link)
 
-        print(f"Question #{i} was scheduled for {post_time} --- '{formatted_text[0:40]}...'")
+        print(f"Question #{i} was scheduled for {post_time} --- '{formatted_text[0:40].replace(line_break, ' ')}...'")
 
         # to avoid timeout from TelegramAPI for too many messages
-        if ((i + 1) % 9 == 0):
+        if ((i + 1) % messages_before_break == 0):
             time.sleep(1)
 
 

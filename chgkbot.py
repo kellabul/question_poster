@@ -86,7 +86,7 @@ def main():
         print(f"Question #{i} was scheduled for {post_time} --- '{formatted_text[0:40]}...'")
 
         # to avoid timeout from TelegramAPI for too many messages
-        if ((i + 1) % 20 == 0):
+        if ((i + 1) % 9 == 0):
             time.sleep(1)
 
 

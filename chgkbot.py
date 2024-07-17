@@ -30,7 +30,8 @@ dates = df['Date']
 question: dict = df['Question']
 
 line_break = '\n'
-messages_before_break = 5
+messages_before_break = 10
+seconds_to_sleep = 5
 
 
 def post_question(post_text, post_date, link):
@@ -88,9 +89,9 @@ def main():
 
         print(f"Question #{i} was scheduled for {post_time} --- '{formatted_text[0:40].replace(line_break, ' ')}...'")
 
-        # to avoid timeout from TelegramAPI for too many messages
+        # to avoid antispam timeout from TelegramAPI
         if ((i + 1) % messages_before_break == 0):
-            time.sleep(3)
+            time.sleep(seconds_to_sleep)
 
 
 if __name__ == '__main__':

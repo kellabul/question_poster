@@ -30,7 +30,7 @@ dates = df['Date']
 question: dict = df['Question']
 
 line_break = '\n'
-messages_before_break = 7
+messages_before_break = 5
 
 
 def post_question(post_text, post_date, link):
@@ -90,7 +90,7 @@ def main():
 
         # to avoid timeout from TelegramAPI for too many messages
         if ((i + 1) % messages_before_break == 0):
-            time.sleep(1)
+            time.sleep(3)
 
 
 if __name__ == '__main__':

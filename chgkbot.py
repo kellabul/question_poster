@@ -30,8 +30,8 @@ dates = df['Date']
 question: dict = df['Question']
 
 line_break = '\n'
-messages_before_break = 10
-seconds_to_sleep = 5
+messages_before_break = 1
+seconds_to_sleep = 2
 
 
 def post_question(post_text, post_date, link):

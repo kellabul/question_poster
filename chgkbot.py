@@ -30,8 +30,6 @@ dates = df['Date']
 question: dict = df['Question']
 
 line_break = '\n'
-messages_before_break = 1
-seconds_to_sleep = 2
 
 
 def post_question(post_text, post_date, link):
@@ -62,7 +60,20 @@ def get_link(delimited_text):
     return ''
 
 
+def set_timeout():
+    count = 0
+    for i in range(len(df.index)):
+        if type(question[i]) == str:
+            count += 1
+    if count > 25:
+        return 12
+    return 1
+
+
 def main():
+    messages_before_break = 1
+    seconds_to_sleep = set_timeout()
+
     for i in range(len(df.index)):
         # if 'question' cell is empty, type == float
         if type(question[i]) != str:

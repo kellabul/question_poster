@@ -61,17 +61,18 @@ def get_link(delimited_text):
 
 
 def set_timeout():
+    messages_can_be_posted_without_timeout:int = 25
+    timeout_value:int = 12
     count = 0
     for i in range(len(df.index)):
         if type(question[i]) == str:
             count += 1
-    if count > 25:
-        return 12
-    return 1
+    if count > messages_can_be_posted_without_timeout:
+        return timeout_value
+    return 0
 
 
 def main():
-    messages_before_break = 1
     seconds_to_sleep = set_timeout()
 
     for i in range(len(df.index)):
@@ -101,8 +102,7 @@ def main():
         print(f"Question #{i} was scheduled for {post_time} --- '{formatted_text[0:40].replace(line_break, ' ')}...'")
 
         # to avoid antispam timeout from TelegramAPI
-        if ((i + 1) % messages_before_break == 0):
-            time.sleep(seconds_to_sleep)
+        time.sleep(seconds_to_sleep)
 
 
 if __name__ == '__main__':

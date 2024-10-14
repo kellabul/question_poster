@@ -69,7 +69,7 @@ def set_timeout():
             count += 1
     if count > messages_can_be_posted_without_timeout:
         return timeout_value, count
-    return 0
+    return 0, count
 
 
 def main():
@@ -102,7 +102,7 @@ def main():
 
         count+= 1
 
-        print(f"{count}/{amount} Question #{i} was scheduled for {post_time} --- '{formatted_text[0:40].replace(line_break, ' ')}...'")
+        print(f"{count}/{question_amount} Question #{i} was scheduled for {post_time} --- '{formatted_text[0:40].replace(line_break, ' ')}...'")
 
         # to avoid antispam timeout from TelegramAPI
         time.sleep(seconds_to_sleep)

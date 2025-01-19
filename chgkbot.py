@@ -1,6 +1,6 @@
 from pyrogram import Client
 from pandas import read_excel
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
 import json
 
@@ -8,13 +8,13 @@ post_time_hours = 20
 post_time_minutes = 00
 
 
-with  open('credentials.json') as creds_file:
+with open('credentials.json') as creds_file:
     creds = json.load(creds_file)
-    
+
 # # chat_id:int = creds["test_chat_id"]
-chat_id:int = creds["chat_id"]
-bot_api_id:int = creds["bot_api_id"]
-bot_api_hash:str = creds["bot_api_hash"]
+chat_id: int = creds["chat_id"]
+bot_api_id: int = creds["bot_api_id"]
+bot_api_hash: str = creds["bot_api_hash"]
 
 
 key_word: str = 'Ответ:'
@@ -24,8 +24,7 @@ error_text: str = 'n-a'
 app = Client(name="chgk_bot_user", api_id=bot_api_id, api_hash=bot_api_hash)
 
 
-df = read_excel('questions.xlsx', parse_dates=[
-                   'Date'], usecols=['Date', 'Question'])
+df = read_excel('questions.xlsx', parse_dates=['Date'], usecols=['Date', 'Question'])
 dates = df['Date']
 question: dict = df['Question']
 
@@ -61,9 +60,9 @@ def get_link(delimited_text):
 
 
 def get_timeout():
-    messages_can_be_posted_without_timeout:int = 25
-    timeout_value:int = 12
-    count:int = 0
+    messages_can_be_posted_without_timeout: int = 25
+    timeout_value: int = 12
+    count: int = 0
     for i in range(len(df.index)):
         if type(question[i]) == str:
             count += 1
@@ -72,11 +71,17 @@ def get_timeout():
     return 0, count
 
 
+def get_estimated_time(timeout, question_amount):
+    return (question_amount - 1) * timeout
+
+
 def main():
-    seconds_to_sleep, question_amount = get_timeout()
-    estimated_time = question_amount * seconds_to_sleep
-    count:int = 0
-    print(f"Number of questions: {question_amount}, estimated time: {estimated_time}s")
+    timeout, question_amount = get_timeout()
+    estimated_time = get_estimated_time(timeout, question_amount)
+    remaining_time = estimated_time
+    count: int = 0
+    print(
+        f"Number of questions: {question_amount}, expected completion time: {datetime.now() + timedelta(seconds=estimated_time)}")
     for i in range(len(df.index)):
         # if 'question' cell is empty, type == float
         if type(question[i]) != str:
@@ -86,7 +91,7 @@ def main():
             hour=post_time_hours, minute=post_time_minutes)
 
         if post_time < datetime.now():
-            print(f"--- !!! --- incorrect date (index = {i}): {post_time}")
+            print(f"WARNING! incorrect date (index = {i}): {post_time}")
             break
 
         delimited_question_text = delimit_text(question[i])
@@ -101,12 +106,15 @@ def main():
 
         post_question(formatted_text, post_time, link)
 
-        count+= 1
+        count += 1
 
-        print(f"{count}/{question_amount} rt: ~{estimated_time - count*seconds_to_sleep}s  Question #{i} was scheduled for {post_time} --- '{formatted_text[0:40].replace(line_break, ' ')}...'")
+        print(f"{count}/{question_amount} -- {remaining_time}s/{estimated_time}s -- #{i} scheduled for {post_time} -- '{formatted_text[0:40].replace(line_break, ' ')}...'")
 
-        # to avoid antispam timeout from TelegramAPI
-        time.sleep(seconds_to_sleep)
+        remaining_time -= timeout
+
+        # avoiding antispam timeout from TelegramAPI
+        if count < question_amount:
+            time.sleep(timeout)
 
 
 if __name__ == '__main__':

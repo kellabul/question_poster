@@ -24,7 +24,8 @@ error_text: str = 'n-a'
 app = Client(name="chgk_bot_user", api_id=bot_api_id, api_hash=bot_api_hash)
 
 
-df = read_excel('questions.xlsx', parse_dates=['Date'], usecols=['Date', 'Question'])
+df = read_excel('questions.xlsx', parse_dates=[
+                'Date'], usecols=['Date', 'Question'])
 dates = df['Date']
 question: dict = df['Question']
 
@@ -71,17 +72,22 @@ def get_timeout():
     return 0, count
 
 
-def get_estimated_time(timeout, question_amount):
+def get_estimated_time(remaining_time, question_amount):
+    # +2s for every question
+    return remaining_time + question_amount * 2
+
+
+def get_remaining_time(timeout, question_amount):
     return (question_amount - 1) * timeout
 
 
 def main():
     timeout, question_amount = get_timeout()
-    estimated_time = get_estimated_time(timeout, question_amount)
-    remaining_time = estimated_time
+    remaining_time = get_remaining_time(timeout, question_amount)
+    estimated_time = get_estimated_time(remaining_time, question_amount)
     count: int = 0
-    print(
-        f"Number of questions: {question_amount}, expected completion time: {datetime.now() + timedelta(seconds=estimated_time)}")
+    print(f"Number of questions: {question_amount}")
+    print(f"Expected completion time: {(datetime.now() + timedelta(seconds=estimated_time)).strftime('%Y-%m-%d %H:%M:%S')}")
     for i in range(len(df.index)):
         # if 'question' cell is empty, type == float
         if type(question[i]) != str:
@@ -108,7 +114,8 @@ def main():
 
         count += 1
 
-        print(f"{count}/{question_amount} -- {remaining_time}s/{estimated_time}s -- #{i} scheduled for {post_time} -- '{formatted_text[0:40].replace(line_break, ' ')}...'")
+        print(
+            f"{count}/{question_amount} -- ~ {remaining_time//60}m {remaining_time%60}s left -- #{i} scheduled for {post_time} -- '{formatted_text[0:40].replace(line_break, ' ')}...'")
 
         remaining_time -= timeout
 

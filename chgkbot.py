@@ -6,11 +6,13 @@ import json
 
 post_time_hours = 20
 post_time_minutes = 00
-
+messages_can_be_posted_without_timeout: int = 25
+post_timeout: int = 12
+seconds_in_minute = 60
+output_line_length = 40
 
 with open('credentials.json') as creds_file:
     creds = json.load(creds_file)
-
 # # chat_id:int = creds["test_chat_id"]
 chat_id: int = creds["chat_id"]
 bot_api_id: int = creds["bot_api_id"]
@@ -19,20 +21,11 @@ bot_api_hash: str = creds["bot_api_hash"]
 
 key_word: str = 'Ответ:'
 error_text: str = 'n-a'
-
-
-app = Client(name="chgk_bot_user", api_id=bot_api_id, api_hash=bot_api_hash)
-
-
-df = read_excel('questions.xlsx', parse_dates=[
-                'Date'], usecols=['Date', 'Question'])
-dates = df['Date']
-question: dict = df['Question']
-
+stop_word: str = 'break'
 line_break = '\n'
 
 
-def post_question(post_text, post_date, link):
+def post_question(app, post_text, post_date, link):
     if link != '':
         post_text = post_text.replace(link+line_break, '')
         app.send_photo(chat_id, link, caption=post_text,
@@ -60,16 +53,20 @@ def get_link(delimited_text):
     return ''
 
 
-def get_timeout():
-    messages_can_be_posted_without_timeout: int = 25
-    timeout_value: int = 12
+def get_question_amount(question_dict):
     count: int = 0
-    for i in range(len(df.index)):
-        if type(question[i]) == str:
+    for question in question_dict:
+        if (question == stop_word):
+            break
+        if type(question) == str:
             count += 1
-    if count > messages_can_be_posted_without_timeout:
-        return timeout_value, count
-    return 0, count
+    return count
+
+
+def get_timeout(question_amount):
+    if question_amount > messages_can_be_posted_without_timeout:
+        return post_timeout
+    return 0
 
 
 def get_estimated_time(remaining_time, question_amount):
@@ -81,26 +78,51 @@ def get_remaining_time(timeout, question_amount):
     return (question_amount - 1) * timeout
 
 
-def main():
-    timeout, question_amount = get_timeout()
+def get_expected_completion_time(estimated_time):
+    return (datetime.now() + timedelta(seconds=estimated_time)).strftime('%Y-%m-%d %H:%M:%S')
+
+
+def format_question_for_output_message(formatted_text):
+    return formatted_text[0:output_line_length].replace(line_break, ' ')
+
+
+def get_remaining_time_output(remaining_time):
+    return f"~ {remaining_time//seconds_in_minute}m {remaining_time%seconds_in_minute}s left"
+
+
+def main(app):
+    df = read_excel('questions.xlsx', parse_dates=[
+                    'Date'], usecols=['Date', 'Question'])
+    dates = df['Date']
+    question_dict: dict = df['Question']
+
+    question_amount = get_question_amount(question_dict)
+    timeout = get_timeout(question_amount)
     remaining_time = get_remaining_time(timeout, question_amount)
     estimated_time = get_estimated_time(remaining_time, question_amount)
+
     count: int = 0
     print(f"Number of questions: {question_amount}")
-    print(f"Expected completion time: {(datetime.now() + timedelta(seconds=estimated_time)).strftime('%Y-%m-%d %H:%M:%S')}")
-    for i in range(len(df.index)):
+    print(
+        f"Expected completion time: {get_expected_completion_time(estimated_time)}")
+
+    for i in range(len(question_dict)):
         # if 'question' cell is empty, type == float
-        if type(question[i]) != str:
+        if type(question_dict[i]) != str:
             continue
+
+        if (question_dict[i] == stop_word):
+            break
 
         post_time = dates[i].to_pydatetime().replace(
             hour=post_time_hours, minute=post_time_minutes)
 
         if post_time < datetime.now():
-            print(f"WARNING! incorrect date (index = {i}): {post_time}")
+            print(f"WARNING !!! incorrect date (index = {i}): {post_time}")
+            print(f"date in the past will cause immediate posting")
             break
 
-        delimited_question_text = delimit_text(question[i])
+        delimited_question_text = delimit_text(question_dict[i])
 
         if delimited_question_text == error_text:
             print(f"incorrect question formatting: index = {i}")
@@ -108,14 +130,14 @@ def main():
 
         link = get_link(delimited_question_text)
 
-        formatted_text = format_question(delimited_question_text)
+        formatted_question_text = format_question(delimited_question_text)
 
-        post_question(formatted_text, post_time, link)
+        post_question(app, formatted_question_text, post_time, link)
 
         count += 1
 
         print(
-            f"{count}/{question_amount} -- ~ {remaining_time//60}m {remaining_time%60}s left -- #{i} scheduled for {post_time} -- '{formatted_text[0:40].replace(line_break, ' ')}...'")
+            f"{count}/{question_amount} -- {get_remaining_time_output(remaining_time)} -- #{i} scheduled for {post_time} -- '{format_question_for_output_message(formatted_question_text)}...'")
 
         remaining_time -= timeout
 
@@ -125,6 +147,8 @@ def main():
 
 
 if __name__ == '__main__':
+    app = Client(name="chgk_bot_user", api_id=bot_api_id,
+                 api_hash=bot_api_hash)
     app.start()
-    main()
+    main(app)
     app.stop()

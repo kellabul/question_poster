@@ -1,21 +1,40 @@
 REQ_FILE=requirements.txt
 PROJECT=question_poster
-SOURCE_FILE=chgkbot.py
-VENV=${PROJECT}_venv
+SOURCE=chgkbot.py
+VENV=venv
 PYTHON=python3
+VENV_PYTHON=${VENV}/bin/python3
+PIP = $(VENV)/bin/pip
 
-.PHONY: all write_req download_req create_venv load_venv run
+.PHONY: all freeze setup create_venv load_venv run clean
 
 all: run
 
-write_req:
-	${PYTHON} -m pip freeze > ${REQ_FILE}
 
-download_req:
-	${PYTHON} -m pip install -r ${REQ_FILE}
+backup_req:
+	cp ${REQ_FILE} ${REQ_FILE}.bak
 
-create_venv:
+
+${VENV}:
 	${PYTHON} -m venv ${VENV}
 
+
+setup: ${VENV} requirements.txt
+	${PIP} install -r ${REQ_FILE}
+
+
+freeze: backup_req
+	${PIP} freeze > ${REQ_FILE}
+
+
 run:
-	${PYTHON} ${SOURCE_FILE}
+	${VENV_PYTHON} ${SOURCE}
+
+
+autopep:
+	${VENV_PYTHON} -m autopep8 --in-place ${SOURCE}
+
+
+clean:
+	rm -rf __pycache__
+	rm -rf ${VENV}

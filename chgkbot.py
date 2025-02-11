@@ -4,41 +4,42 @@ from datetime import datetime, timedelta
 import time
 import json
 
-post_time_hours = 20
-post_time_minutes = 00
+post_time_hours: int = 20
+post_time_minutes: int = 00
 messages_can_be_posted_without_timeout: int = 25
 post_timeout: int = 12
-seconds_in_minute = 60
-output_line_length = 40
+seconds_in_minute: int = 60
+log_text_length: int = 40
+
+key_word: str = 'Ответ:'
+stop_word: str = 'break'
+excel_file_path: str = 'questions.xlsx'
+date_column_header: str = 'Date'
+question_column_header: str = 'Question'
+line_break = '\n'
 
 with open('credentials.json') as creds_file:
     creds = json.load(creds_file)
-# # chat_id:int = creds["test_chat_id"]
 chat_id: int = creds["chat_id"]
 bot_api_id: int = creds["bot_api_id"]
 bot_api_hash: str = creds["bot_api_hash"]
 
 
-key_word: str = 'Ответ:'
-error_text: str = 'n-a'
-stop_word: str = 'break'
-line_break = '\n'
-
-
 def post_question(app, post_text, post_date, link):
-    if link != '':
+    if link:
         post_text = post_text.replace(link+line_break, '')
         app.send_photo(chat_id, link, caption=post_text,
                        schedule_date=post_date)
-    else:
-        app.send_message(chat_id, post_text, schedule_date=post_date)
+        return
+
+    app.send_message(chat_id, post_text, schedule_date=post_date)
 
 
 def delimit_text(question_text):
     if (key_word) in question_text:
         delimited_text = question_text.split(key_word)
         return delimited_text
-    return error_text
+    return ''
 
 
 def format_question(delimited_text):
@@ -82,24 +83,29 @@ def get_expected_completion_time(estimated_time):
     return (datetime.now() + timedelta(seconds=estimated_time)).strftime('%Y-%m-%d %H:%M:%S')
 
 
-def format_question_for_output_message(formatted_text):
-    return formatted_text[0:output_line_length].replace(line_break, ' ')
+def format_text_for_log(output_text):
+    text_prefix = "'"
+    text_postfix = "...'" if len(
+        output_text) > log_text_length else text_prefix
+    return f"{text_prefix}{output_text[0:log_text_length].replace(line_break, ' ')}{text_postfix}"
 
 
-def get_remaining_time_output(remaining_time):
-    return f"~ {remaining_time//seconds_in_minute}m {remaining_time%seconds_in_minute}s left"
+def get_remaining_time_output_string(remaining_time):
+    remaining_time_minutes = remaining_time//seconds_in_minute
+    remaining_time_seconds = remaining_time%seconds_in_minute
+    return f"~ {remaining_time_minutes:02d}m {remaining_time_seconds:02d}s left"
 
 
 def main(app):
-    df = read_excel('questions.xlsx', parse_dates=[
-                    'Date'], usecols=['Date', 'Question'])
-    dates = df['Date']
-    question_dict: dict = df['Question']
+    df = read_excel(excel_file_path, parse_dates=[
+                    date_column_header], usecols=[date_column_header, question_column_header])
+    dates = df[date_column_header]
+    question_dict: dict = df[question_column_header]
 
-    question_amount = get_question_amount(question_dict)
-    timeout = get_timeout(question_amount)
-    remaining_time = get_remaining_time(timeout, question_amount)
-    estimated_time = get_estimated_time(remaining_time, question_amount)
+    question_amount: int = get_question_amount(question_dict)
+    timeout: int = get_timeout(question_amount)
+    remaining_time: int = get_remaining_time(timeout, question_amount)
+    estimated_time: int = get_estimated_time(remaining_time, question_amount)
 
     count: int = 0
     print(f"Number of questions: {question_amount}")
@@ -107,7 +113,7 @@ def main(app):
         f"Expected completion time: {get_expected_completion_time(estimated_time)}")
 
     for i in range(len(question_dict)):
-        # if 'question' cell is empty, type == float
+        # if question cell is empty, type == float
         if type(question_dict[i]) != str:
             continue
 
@@ -124,8 +130,9 @@ def main(app):
 
         delimited_question_text = delimit_text(question_dict[i])
 
-        if delimited_question_text == error_text:
-            print(f"incorrect question formatting: index = {i}")
+        if not delimited_question_text:
+            print(
+                f"incorrect question format (index = {i}): {format_text_for_log(question_dict[i])}")
             continue
 
         link = get_link(delimited_question_text)
@@ -137,7 +144,7 @@ def main(app):
         count += 1
 
         print(
-            f"{count}/{question_amount} -- {get_remaining_time_output(remaining_time)} -- #{i} scheduled for {post_time} -- '{format_question_for_output_message(formatted_question_text)}...'")
+            f"{count:02d}/{question_amount:02d} -- {get_remaining_time_output_string(remaining_time)} -- #{i:02d} scheduled for {post_time} -- {format_text_for_log(formatted_question_text)}")
 
         remaining_time -= timeout
 

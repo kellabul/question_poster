@@ -10,6 +10,7 @@ messages_can_be_posted_without_timeout: int = 25
 post_timeout: int = 12
 seconds_in_minute: int = 60
 log_text_length: int = 40
+average_time_error: int = 2
 
 key_word: str = 'Ответ:'
 stop_word: str = 'break'
@@ -70,17 +71,12 @@ def get_timeout(question_amount):
     return 0
 
 
-def get_estimated_time(remaining_time, question_amount):
-    # +2s for every question
-    return remaining_time + question_amount * 2
-
-
 def get_remaining_time(timeout, question_amount):
-    return (question_amount - 1) * timeout
+    return (question_amount - 1) * timeout + question_amount * average_time_error
 
 
-def get_expected_completion_time(estimated_time):
-    return (datetime.now() + timedelta(seconds=estimated_time)).strftime('%Y-%m-%d %H:%M:%S')
+def get_expected_completion_time(remaining_time):
+    return (datetime.now() + timedelta(seconds=remaining_time)).strftime('%Y-%m-%d %H:%M:%S')
 
 
 def format_text_for_log(output_text):
@@ -92,7 +88,7 @@ def format_text_for_log(output_text):
 
 def get_remaining_time_output_string(remaining_time):
     remaining_time_minutes = remaining_time//seconds_in_minute
-    remaining_time_seconds = remaining_time%seconds_in_minute
+    remaining_time_seconds = remaining_time % seconds_in_minute
     return f"~ {remaining_time_minutes:02d}m {remaining_time_seconds:02d}s left"
 
 
@@ -105,12 +101,11 @@ def main(app):
     question_amount: int = get_question_amount(question_dict)
     timeout: int = get_timeout(question_amount)
     remaining_time: int = get_remaining_time(timeout, question_amount)
-    estimated_time: int = get_estimated_time(remaining_time, question_amount)
 
     count: int = 0
     print(f"Number of questions: {question_amount}")
     print(
-        f"Expected completion time: {get_expected_completion_time(estimated_time)}")
+        f"Expected completion time: {get_expected_completion_time(remaining_time)}")
 
     for i in range(len(question_dict)):
         # if question cell is empty, type == float
@@ -146,7 +141,7 @@ def main(app):
         print(
             f"{count:02d}/{question_amount:02d} -- {get_remaining_time_output_string(remaining_time)} -- #{i:02d} scheduled for {post_time} -- {format_text_for_log(formatted_question_text)}")
 
-        remaining_time -= timeout
+        remaining_time -= (timeout + average_time_error)
 
         # avoiding antispam timeout from TelegramAPI
         if count < question_amount:

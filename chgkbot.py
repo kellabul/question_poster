@@ -7,10 +7,10 @@ import json
 post_time_hours: int = 20
 post_time_minutes: int = 00
 messages_can_be_posted_without_timeout: int = 25
-post_timeout: int = 12
+post_timeout: int = 13
 seconds_in_minute: int = 60
 log_text_length: int = 40
-average_time_error: int = 2
+average_time_error: int = 4
 
 key_word: str = 'Ответ:'
 stop_word: str = 'break'
